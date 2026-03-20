@@ -1,0 +1,17 @@
+{
+  "name": "Sansound",
+  "short_name": "Sansound",
+  "description": "A premium, minimalist music streaming experience.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/D0djZ09h/Black-Yellow-Icon-Modern-Brand-Music-Logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
