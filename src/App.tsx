@@ -87,14 +87,15 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [searchResults, setSearchResults] = useState<Track[]>([]);
+  const [trendingTracks, setTrendingTracks] = useState<Track[]>(INITIAL_TRACKS);
   const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   
   const playerRef = useRef<any>(null);
 
   // Gemini Search Integration
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
 
     setIsSearching(true);
@@ -102,9 +103,13 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Find 5 popular songs matching "${searchQuery}". Return ONLY a JSON array of objects with fields: id (string), title, artist, album, cover (use a high quality placeholder from picsum.photos/seed/{artist}/400/400), url (a valid YouTube link for the song), duration (e.g. "3:45").`,
+        contents: `Find 6 real, popular songs matching "${searchQuery}". For each song, find a valid YouTube music URL. 
+        Return ONLY a JSON array of objects with these exact fields: 
+        id (string), title, artist, album, cover (use https://picsum.photos/seed/{artist_name_no_spaces}/400/400), 
+        url (the real YouTube URL), duration (e.g. "3:45").`,
         config: {
           responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }]
         }
       });
 
@@ -113,10 +118,35 @@ export default function App() {
       setActiveTab('search');
     } catch (error) {
       console.error("Search failed:", error);
+      setSearchResults(INITIAL_TRACKS);
     } finally {
       setIsSearching(false);
     }
   };
+
+  // Fetch trending on mount
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: "List 6 currently trending global hit songs. Return ONLY a JSON array of objects with fields: id, title, artist, album, cover (picsum seed), url (YouTube), duration.",
+          config: {
+            responseMimeType: "application/json",
+            tools: [{ googleSearch: {} }]
+          }
+        });
+        const results = JSON.parse(response.text || '[]');
+        if (results.length > 0) {
+          setTrendingTracks(results);
+        }
+      } catch (e) {
+        console.error("Failed to fetch trending", e);
+      }
+    };
+    fetchTrending();
+  }, []);
 
   const playTrack = (track: Track) => {
     setCurrentTrack(track);
@@ -249,7 +279,7 @@ export default function App() {
                     <button className="text-sm text-white/40 hover:text-white transition-colors">Show all</button>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-                    {INITIAL_TRACKS.map((track) => (
+                    {trendingTracks.map((track) => (
                       <TrackCard key={track.id} track={track} onPlay={() => playTrack(track)} />
                     ))}
                   </div>
@@ -261,7 +291,7 @@ export default function App() {
                     <button className="text-sm text-white/40 hover:text-white transition-colors">Show all</button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {INITIAL_TRACKS.slice(0, 4).map((track, i) => (
+                    {trendingTracks.slice(0, 4).map((track, i) => (
                       <div 
                         key={i} 
                         className="group flex items-center gap-4 p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all cursor-pointer"
